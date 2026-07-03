@@ -1,6 +1,5 @@
 import random
 import scipy.stats as stats
-import matplotlib.pyplot as plt
 
 def evaluate_dice_prng(num_rolls, seed, alpha):
     """
