@@ -1,62 +1,50 @@
 import random
-import numpy as np
-from scipy import stats
+import scipy.stats as stats
+import matplotlib.pyplot as plt
 
-def evaluate_prng(n, k, seed):
+def evaluate_dice_prng(num_rolls, seed, alpha):
     """
-    Evaluates Python's random package PRNG uniformity using a Chi-Squared test.
+    Evaluates if Python's random package PRNG models a 6-sided dice roll
+    correctly. Eval metric is Chi-squared.
     
     Parameters:
-    - n (int): Number of random samples to generate.
-    - k (int): Number of intervals.
+    - num_rolls (int): Number of times to 'roll' the dice.
     - seed (int): PRNG seed (for reproducibility).
+    - alpha (float): Alpha value to compare p-value against.
     """
 
-    random.seed(seed) 
-    samples = [random.random() for _ in range(n)]
-    
-    # Define intervals. Note that k+1 interval 'edges' are required for k intervals.
-    intervals = np.linspace(0.0, 1.0, k + 1)
+    random.seed(seed)
 
-    # Observed frequencies.
-    O, _ = np.histogram(samples, bins=intervals)
+    # Roll the dice num_rolls times.
+    rolls = [random.randint(1, 6) for _ in range(num_rolls)]
     
-    # Expected frequencies for a UNIF distro.
-    exp_freq = n / k
-    E = np.full(k, exp_freq)
+    # Observed frequencies for each face 1..6.
+    observed_frequencies = [rolls.count(face) for face in range(1, 7)]
     
-    # Chi-squared Goodness-of-Fit.
-    diff = O - E
-    sq_diff = diff ** 2
-    chisquared = np.sum(sq_diff) / exp_freq
-
-    # Degrees of freedom
-    df = k - 1
-
-    # z and p-val
-    z = (chisquared - df) / np.sqrt(2 * df)
-    pval = stats.norm.sf(z)
-
-    print(f"--- PRNG Evaluation Results ---")
-    print(f"Seed used:          {seed}")
-    print(f"Sample Size (n):    {n}")
-    print(f"Number of Bins (k): {k}")
-    print(f"Expected per Bin:   {exp_freq}")
-    print(f"Chi-square:         {chisquared:.4f}")
-    print(f"Z-score:            {z:.4f}")
-    print(f"P-value:            {pval:.4f}")
-    print(f"-------------------------------")
+    # Expected frequencies for each face 1..6.
+    expected_value = num_rolls / 6
+    expected_frequencies = [expected_value] * 6
     
-    # alpha = 0.05 seems standard.
-    alpha = 0.05
-    if pval < alpha:
-        print(f"Result: REJECT the null hypothesis (p < {alpha}).")
-        print("The sample distribution significantly deviates from a uniform distribution.")
+    # Chi-Squared Goodness-of-Fit.
+    chisquare, p_val = stats.chisquare(f_obs=observed_frequencies, f_exp=expected_frequencies)
+    
+    # Results
+    print("--- Chi-Squared Goodness-of-Fit Test ---")
+    print(f"Total Rolls: {num_rolls}")
+    print(f"Expected Frequency per Face: {expected_value}")
+    print("-" * 40)
+    for face, obs in enumerate(observed_frequencies, 1):
+        print(f"Face {face}: Observed = {obs}, Expected = {expected_value}")
+    print("-" * 40)
+    print(f"Chi-square: {chisquare:.4f}")
+    print(f"alpha: {alpha:.4f}")
+    print(f"p-value: {p_val:.4f}")
+    if p_val < alpha:
+        print(f"\nResult: REJECT null hypothesis that random PRNG is a good modeler of 6-sided dice. The PRNG shows statistically significant bias.")
     else:
-        print(f"Result: FAIL TO REJECT (or ACCEPT) the null hypothesis (p >= {alpha}).")
-        print("The PRNG behaves consistently with a uniform distribution.")
+        print(f"\nResult: FAIL TO REJECT (or ACCEPT) null hypothesis that random PRNG is a good modeler of 6-sided dice. The PRNG acts like a fair 6-sided dice.")
 
 # Run the evaluation
 if __name__ == "__main__":
-    evaluate_prng(n=10000, k=100, seed=708)
+    evaluate_dice_prng(num_rolls=600000, seed=708, alpha=.05)
 
